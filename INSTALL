@@ -1,0 +1,15 @@
+Ioke doesn't really have a decent package manager yet (cane is still under
+development, I guess) so you might have to manually install Biild. It is
+really easy though, I promise. Just make a simple shell script somewhere
+in your PATH. I actually have ~/bin in my PATH for simple things like this.
+
+Enter this into a shell script:
+
+    #!/bin/sh
+    ioke /path/to/biild.ik $*
+
+Call it biild and then run:
+
+    $ chmod u+x biild
+
+All done. I think.
