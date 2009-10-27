@@ -1,0 +1,60 @@
+:: Biild :: A very tiny build system ::
+
+  Biild is a build system modeled after
+Ruby Rake and built in the Ioke language.
+
+:: How to Use ::
+
+  When Biild is run, it looks for a script
+called a Biildfile in the current directory.
+It can be called any of these things:
+
+  Biildfile
+  Biildfile.ik
+  biildfile
+  biildfile.ik
+  
+  The first one that matches will be found
+and loaded.
+
+:: The Biildfile ::
+
+  Biildfiles are actually a simple DSL
+interpreter that tasks are defined inside
+of. A simple task looks like this:
+
+  task(:bloop,
+      "Inside the bloop task!" println
+      true
+  )
+  
+  Then when Biild is run, like this:
+  
+  $ biild bloop
+  
+  The bloop task will be executed.
+  
+  Tasks can also be namespaced, allowing
+related tasks to be grouped together.
+
+  namespace(:sounds,
+  	  task(:buzz,
+  	      "bzzzzzzzzzzzzz" println
+  	  )
+  	  task(:hum,
+  	      "H M M M M M M" println
+  	  )
+  )
+  
+  Namespace nesting isn't limited,
+namespaces can be multiple levels deep.
+To access a namespaced task, use the
+convention namespace:task, i.e.:
+
+  $ biild sounds:buzz
+
+:: More Information ::
+
+Justin Poliey http://justinpoliey.com
+         Rake http://rake.rubyforge.org
+         Ioke http://ioke.org
