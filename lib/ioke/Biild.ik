@@ -50,11 +50,12 @@ Biild = Origin mimic do(
 	
 )
 
-namespace = macro(
-	if(call arguments size != 2, error!(Condition Error Invocation NoMatch, message: call message, context: call currentContext))
-	Biild ns << call argAt(0)
-	call arguments[1] evaluateOn(call ground)
-	Biild ns pop!
+namespace = dmacro(
+	;if(call arguments size != 2, error!(Condition Error Invocation NoMatch, message: call message, context: call currentContext))
+	[>name, code]
+		Biild ns << name
+		code evaluateOn(call ground)
+		Biild ns pop!
 )
 
 task = dmacro(
