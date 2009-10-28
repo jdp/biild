@@ -1,31 +1,26 @@
 ; Tasks with long descriptions are truncated
 task(:windy, "A super long and totally unnecessary description for a simple Biildfile task",
 	"Leaves rustle." println
-	true
 )
 
 ; Tasks can be very simple
 task(:test,
 	"All running tests passed." println
-	true
 )
 
 ; Tasks can depend on other tasks!
 task(:run => :test,
 	"Something is happening!" println
-	true
 )
 
 ; They can even depend on multiple tasks at once!
 task(:get_winded => [:test, :windy],
 	"I think it's the shoes." println
-	true
 )
 
 namespace(:environment,
 	task(:load,
 		"Now loading your environment!" println
 		"Don't forget your goggles." println
-		true
 	)
 )

@@ -1,3 +1,5 @@
+#!/usr/bin/env ioke
+
 ;; Monkeypatch for filesystem separator
 FileSystem separator = method(case(System windows?, true, "\\", false, "/"))
 
@@ -88,7 +90,6 @@ task(["--tasks", "-T"], "List all tasks and their descriptions",
 
 task(["--version", "-v"], "Shows current Biild version",
 	"Biild version 0.1.0" println
-	true
 )
 
 task(["--help", "-h"], "Shows basic Biild help",
@@ -99,10 +100,10 @@ task(["--help", "-h"], "Shows basic Biild help",
 	"  -T, --tasks    Show all available non-system tasks" println
 	"  -v, --version  Show current Biild version" println
 	"  -h, --help     Show basic help summary" println
-	true
 )
 
 System ifMain(
+	System currentDirectory println
 	biildfiles = Biild getFiles(System currentDirectory)
 	case(biildfiles empty?,
 		false, source = FileSystem readFully(System currentDirectory + FileSystem separator + biildfiles first),
