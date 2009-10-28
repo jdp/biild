@@ -1,15 +1,16 @@
-Ioke doesn't really have a decent package manager yet (cane is still under
-development, I guess) so you might have to manually install Biild. It is
-really easy though, I promise. Just make a simple shell script somewhere
-in your PATH. I actually have ~/bin in my PATH for simple things like this.
+:: Put Biild in your $PATH ::
 
-Enter this into a shell script:
+  $ cp /path/to/lib/ioke/Biild.ik ~/bin
 
-    #!/bin/sh
-    ioke /path/to/biild.ik $*
+:: Name it something more useful ::
 
-Call it biild and then run:
+  $ mv ~/bin/Biild.ik ~/bin/biild
 
-    $ chmod u+x biild
+:: Make it executable ::
 
-All done. I think.
+  $ chmod u+x ~/bin/biild
+
+:: Go somewhere with a Biildfile and invoke it! ::
+
+  $ cp ~/some_project
+  $ biild
