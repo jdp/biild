@@ -10,13 +10,13 @@ Task = Origin mimic do(
 			if(dep cell?(:success) not, dep invoke)
 			if(dep success not, error!("Dependency `#{dep name}' of `#{@name}' failed"))
 		)
-		@success = bind(
+		@success = if(bind(
 			rescue(fn(c,
 				c report println
 				false
 			)),
 			@body evaluateOn(Ground)
-		)
+		) is?(false), false, true)
 	)
 		
 )
@@ -57,30 +57,31 @@ namespace = macro(
 	Biild ns pop!
 )
 
-task = macro(
-	case(call arguments size,
-		1, Biild addTask(call argAt(0), fn(true)),
-		2, Biild addTask(call argAt(0), call arguments[1]),
-		3, Biild addTask(call argAt(0), call arguments[2], call argAt(1)),
-		error!(Condition Error Invocation NoMatch, message: call message, context: call currentContext)
-	)
+task = dmacro(
+	[>name] Biild addTask(name, true),
+	[>name, code] Biild addTask(name, code),
+	[>name, >description, code] Biild addTask(name, code, description)
 )
 
 ;; Add some basic tasks
 task(["--tasks", "-T"], "List all tasks and their descriptions",
 	tasks = Biild tasks select(name[0] != 45)
-	longest = tasks map(name length) max
-	tasks each(t,
-		"biild #{t name}" print
-		if(t desc is?(nil) not,
-			(longest - t name length) times(" " print)
-			desc_trunc = 80 - (longest + 14)
-			if(t desc length > desc_trunc,
-				" ; #{t desc[0..desc_trunc]}..." print,
-				" ; #{t desc}" print
+	if(tasks empty? not,
+		longest = tasks map(name length) max
+		tasks each(t,
+			"biild #{t name}" print
+			if(t desc is?(nil) not,
+				(longest - t name length) times(" " print)
+				desc_trunc = 80 - (longest + 14)
+				if(t desc length > desc_trunc,
+					" ; #{t desc[0..desc_trunc]}..." print,
+					" ; #{t desc}" print
+				)
 			)
+			"" println
 		)
-		"" println
+	,
+		"No tasks defined." println
 	)
 )
 
@@ -108,9 +109,10 @@ System ifMain(
 	)
 	if(source == nil, error!("No biildfile found"))
 	Message doText(source)
-	System programArguments each(opt,
-		task = Biild tasks select(t, t name asText == opt)
-		if(task empty? not, task first invoke, error!("No task `#{opt}'"))
+	tasks = if(System programArguments empty?, [:default], System programArguments)
+	tasks each(taskName,
+		task = Biild tasks select(t, t name asText == taskName)
+		if(task empty? not, task first invoke, error!("No task `#{taskName}'"))
 		if(task first success not, error!("Task `#{task first name}' failed"))
 	)
 )
