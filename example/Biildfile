@@ -24,3 +24,13 @@ namespace(:environment,
 		"Don't forget your goggles." println
 	)
 )
+
+task(:fuckup,
+	"should fail" println
+	false
+)
+
+task(:really_fuck_up => :fuckup,
+	"should really fail"
+	false
+)
