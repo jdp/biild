@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>Biild.ik</title>
+  <link rel="stylesheet" href="http://jashkenas.github.com/docco/resources/docco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  <table cellspacing=0 cellpadding=0>
+  <thead>
+    <tr>
+      <th class=docs><h1>Biild.ik</h1></th>
+      <th class=code></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id='section-1'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-1">#</a>
+        </div>
+        
+      </td>
+      <td class=code>
+        <div class='highlight'><pre></pre></div>
+      </td>
+    </tr>
+    <tr id='section-2'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-2">#</a>
+        </div>
+        <p> <a href="http://ioke.org">Ioke</a> is a very powerful language, running on the JVM and incorporating
+ ideas from languages like <a href="http://iolanguage.com">Io</a>, <a href="http://ruby-lang.org">Ruby</a>, and <a href="http://en.wikipedia.org/wiki/Lisp_(programming_language)">Lisp</a>.
+ In this tutorial we will be making Biild, a simple build system much like
+ the Ruby make, <a href="http://rake.rubyforge.org">Rake</a>. I&rsquo;ll also assume you&rsquo;re at least a little
+ familiar with Ruby and Rake, as I&rsquo;ll be drawing some parallels between them
+ and Ioke. Before diving in, you should probably read the <a href="http://ioke.org/wiki/index.php/Guide">Ioke guide</a>.</p>
+
+<p> The tutorial will touch on many of Ioke&rsquo;s features: most everything is a
+ message send, implicit return, destructuring macros, the condition system,
+ and a little bit of functional programming.</p>
+
+<p> Biild itself is pretty simple. It will support task dependencies,
+ descriptions, and namespacing, but nothing else. The bare necessities.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre></pre></div>
+      </td>
+    </tr>
+    <tr id='section-3'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-3">#</a>
+        </div>
+        <p> To make things easier on ourselves later, we&rsquo;ll start out by making a helper
+ method to return the correct path separator of the platform Biild is on.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="n">FileSystem</span> <span class="n">separator</span> <span class="o">=</span> <span class="k">method</span><span class="o">(</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-4'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-4">#</a>
+        </div>
+        <p> Since control structures in Ioke are just messages, not special language
+ constructs, they can return values just like any another message.
+ The <code>case</code> method works just like <code>switch</code> in other languages, but it
+ doesn&rsquo;t require explicit <code>return</code> or <code>break</code> calls. The <code>"\\"</code> or <code>"/"</code>
+ is returned implicitly.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="n">case</span><span class="o">(</span><span class="n">System</span> <span class="n">windows</span><span class="err">?</span><span class="o">,</span>
+    <span class="no">true</span><span class="o">,</span> <span class="s">&quot;\\&quot;</span><span class="o">,</span>
+    <span class="no">false</span><span class="o">,</span> <span class="s">&quot;/&quot;</span><span class="o">))</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-5'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-5">#</a>
+        </div>
+        <h3>The Biild Object</h3>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre></pre></div>
+      </td>
+    </tr>
+    <tr id='section-6'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-6">#</a>
+        </div>
+        <p> The <code>Biild</code> object controls the show.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="n">Biild</span> <span class="o">=</span> <span class="n">Origin</span> <span class="n">mimic</span> <span class="k">do</span><span class="o">(</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-7'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-7">#</a>
+        </div>
+        <p> The current namespace isn&rsquo;t stored as a string, but a list of names.
+ Each element in the list is one nesting level of namespacing.
+ That way, as namespaces are entered and exited, they are actually pushed
+ and popped to the list of namespaces which is treated as a stack.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="n">ns</span> <span class="o">=</span> <span class="o">[]</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-8'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-8">#</a>
+        </div>
+        <p> Biild keeps an internal list of <code>Task</code> objects, each one represents a
+ single task.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="n">tasks</span> <span class="o">=</span> <span class="o">[])</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-9'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-9">#</a>
+        </div>
+        <h3>The Task Object</h3>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre></pre></div>
+      </td>
+    </tr>
+    <tr id='section-10'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-10">#</a>
+        </div>
+        <p> A Biild task is just a named block of Ioke code, exactly like Rake tasks.
+ There is nothing new here.
+ A task can have dependencies, a description, and a body.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="n">Task</span> <span class="o">=</span> <span class="n">Origin</span> <span class="n">mimic</span> <span class="k">do</span><span class="o">(</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-11'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-11">#</a>
+        </div>
+        <p> When a <code>Task</code> is invoked, two things happen.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="n">invoke</span> <span class="o">=</span> <span class="k">method</span><span class="o">(</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-12'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-12">#</a>
+        </div>
+        <p> First, each dependency of the task is invoked if it hasn&rsquo;t been
+ already.
+ If any dependency fails, Biild immediately stops processing.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="o">@</span><span class="n">dependencies</span> <span class="n">each</span><span class="o">(</span><span class="n">d</span><span class="o">,</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-13'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-13">#</a>
+        </div>
+        <p> A task stores its dependencies as a list of task names, but a
+ <code>Task</code> object of the dependency is needed to actually invoke it.
+ Since task names can be symbols or strings, the <code>asText</code> method
+ needs to be used for comparison, otherwise :task_name and
+ &ldquo;task_name&rdquo; would be treated as two different tasks.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>      <span class="n">dep</span> <span class="o">=</span> <span class="n">Biild</span> <span class="n">tasks</span> <span class="n">select</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">t</span> <span class="n">name</span> <span class="n">asText</span> <span class="o">==</span> <span class="n">d</span> <span class="n">asText</span><span class="o">)</span> <span class="n">first</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-14'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-14">#</a>
+        </div>
+        <p> The <code>@success</code> instance variable of a <code>Task</code> object is <code>true</code> if
+ it has already been invoked successfully. What we&rsquo;re actually
+ checking for is the existence of a <code>success</code> cell on the
+ dependency, we don&rsquo;t really need the boolean because if a task
+ fails Boid stops processing anyway.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>      <span class="k">if</span><span class="o">(</span><span class="n">dep</span> <span class="n">cell</span><span class="err">?</span><span class="o">(</span><span class="err">:</span><span class="n">success</span><span class="o">)</span> <span class="n">not</span><span class="o">,</span> <span class="n">dep</span> <span class="n">invoke</span><span class="o">)</span>
+      <span class="k">if</span><span class="o">(</span><span class="n">dep</span> <span class="n">success</span> <span class="n">not</span><span class="o">,</span>
+        <span class="n">error</span><span class="o">!(</span><span class="s">&quot;Dependency `#{dep name}&#39; of `#{@name}&#39; failed&quot;</span><span class="o">)))</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-15'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-15">#</a>
+        </div>
+        <p> Secondly, we take advantage of Ioke&rsquo;s condition system to invoke
+ tasks in a controlled environment. The condition system is sort of
+ similar to exception handling, but it would do you good to <a href="http://ioke.org/wiki/index.php/Guide#Conditions">read up
+ about them</a> in the Ioke guide if you haven&rsquo;t already.</p>
+
+<p> The <code>bind</code> macro accepts a <code>Restart</code>, <code>Rescue</code>, or <code>Handler</code> as a
+ first parameter, and any message as its second parameter. Just like
+ any Ioke message, it can return a value and we&rsquo;re manipulating that
+ so <code>@success</code> will always be a boolean value.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="o">@</span><span class="n">success</span> <span class="o">=</span> <span class="k">if</span><span class="o">(</span><span class="n">bind</span><span class="o">(</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-16'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-16">#</a>
+        </div>
+        <p> This rescue call will rescue any condition raised by the code in
+ the second parameter to <code>bind</code> because no specific conditions to
+ accept are specified.
+ The <code>.</code> is a message terminator, so first the condition&rsquo;s report
+ will be printed and then <code>false</code> will be returned to <code>bind</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>      <span class="n">rescue</span><span class="o">(</span><span class="n">fn</span><span class="o">(</span><span class="n">c</span><span class="o">,</span> <span class="n">c</span> <span class="n">report</span> <span class="n">println</span><span class="o">.</span> <span class="no">false</span><span class="o">)),</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-17'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-17">#</a>
+        </div>
+        <p> The body of the task is finally evaluated here.
+ It is sent to <code>Ground</code>, and whatever value this evaluates to is
+ what is returned to <code>bind</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>      <span class="o">@</span><span class="n">body</span> <span class="n">evaluateOn</span><span class="o">(</span><span class="n">Ground</span><span class="o">)</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-18'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-18">#</a>
+        </div>
+        <p> Depending on what is returned to the <code>bind</code> macro, <code>@success</code> will
+ evaluate to <code>true</code> or <code>false</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="o">)</span> <span class="n">is</span><span class="err">?</span><span class="o">(</span><span class="no">false</span><span class="o">),</span> <span class="no">false</span><span class="o">,</span> <span class="no">true</span><span class="o">)))</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-19'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-19">#</a>
+        </div>
+        <h3>The Biild Object, revisited</h3>
+
+<p> Code doesn&rsquo;t need to be inside of a <code>do</code> block to be applied to a specific
+ object, qualification can also be used. The means</p>
+
+<pre><code>Biild do(
+  addTask := method())
+</code></pre>
+
+<p> is equivalent to:</p>
+
+<pre><code>Biild addTask := method()
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre></pre></div>
+      </td>
+    </tr>
+    <tr id='section-20'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-20">#</a>
+        </div>
+        <p> Adding a task is as simple as calling <code>Biild addTask</code> and passing a name
+ and code. Names can be symbols:</p>
+
+<pre><code>addTask(:open, "fortune cookie wisdom" println)
+</code></pre>
+
+<p> They can also be strings:</p>
+
+<pre><code>addTask("sup", "greetings from your homeboy" println)
+</code></pre>
+
+<p> If you want to get fancy, i.e., mocking command-line arguments with tasks,
+ names can also be lists which will alias the task to each name in the list.</p>
+
+<pre><code>addTask(["-v", "--verbose"], "annoying messages enabled" println)
+</code></pre>
+
+<p> Ioke also supports arguments with default values. The <code>desc</code> parameter
+ defaults to <code>nil</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="n">Biild</span> <span class="n">addTask</span> <span class="o">=</span> <span class="k">method</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">body</span><span class="o">,</span> <span class="n">desc</span> <span class="no">nil</span><span class="o">,</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-21'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-21">#</a>
+        </div>
+        <p> Both the task name and dependencies are taken from the name parameter.
+ If <code>name</code> is of the <code>Pair</code> kind, it means something like this happened:</p>
+
+<pre><code> addTask(:task =&gt; :dependency, ...)
+</code></pre>
+
+<p> The <code>=&gt;</code> operator returns a <code>Pair</code> object, which is a key/value pair.
+ The <code>first</code> method of a <code>Pair</code> returns the key, and the <code>second</code>
+ method returns the value.</p>
+
+<p> Since we can check if the <code>name</code> is a pair, we can tell if any
+ dependencies are given to the task.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="n">deps</span> <span class="o">=</span> <span class="k">if</span><span class="o">(</span><span class="n">name</span> <span class="n">kind</span><span class="err">?</span><span class="o">(</span><span class="s">&quot;Pair&quot;</span><span class="o">),</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-22'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-22">#</a>
+        </div>
+        <p> The dependencies are always treated as a list. If the dependency
+ given is already a list it is left alone, otherwise its converted to
+ a list.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="k">if</span><span class="o">(</span><span class="n">name</span> <span class="n">second</span> <span class="n">kind</span><span class="err">?</span><span class="o">(</span><span class="s">&quot;List&quot;</span><span class="o">),</span> <span class="n">name</span> <span class="n">second</span><span class="o">,</span> <span class="o">[</span><span class="n">name</span> <span class="n">second</span><span class="o">]),</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-23'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-23">#</a>
+        </div>
+        <p> If no dependencies were given in <code>name</code>, then we default to the
+ empty list <code>[]</code>.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="o">[])</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-24'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-24">#</a>
+        </div>
+        <p> The name of the task is also treated internally as a list, each element
+ of the list being an alias for the task.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="k">if</span><span class="o">(</span><span class="n">name</span> <span class="n">kind</span><span class="err">?</span><span class="o">(</span><span class="s">&quot;Pair&quot;</span><span class="o">),</span> <span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="n">first</span><span class="o">)</span>
+  <span class="n">names</span> <span class="o">=</span> <span class="k">if</span><span class="o">(</span><span class="n">name</span> <span class="n">kind</span><span class="err">?</span><span class="o">(</span><span class="s">&quot;List&quot;</span><span class="o">),</span> <span class="n">name</span><span class="o">,</span> <span class="o">[</span><span class="n">name</span><span class="o">])</span>
+  <span class="n">names</span> <span class="n">each</span><span class="o">(</span><span class="n">name</span><span class="o">,</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-25'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-25">#</a>
+        </div>
+        <p> The fully qualified name of a task is dependent on its namespace.
+ The current namespace is stored in <code>Biild ns</code>, and the string name
+ of the task is the current namespace and task name joined by <code>":"</code>
+ just like in Rake.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="n">name</span> <span class="o">=</span> <span class="o">(</span><span class="n">ns</span> <span class="o">+</span> <span class="o">[</span><span class="n">name</span><span class="o">])</span> <span class="n">join</span><span class="o">(</span><span class="s">&quot;:&quot;</span><span class="o">)</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-26'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-26">#</a>
+        </div>
+        <p> No two tasks can have the same name in the same namespace.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="k">if</span><span class="o">(</span><span class="n">tasks</span> <span class="n">map</span><span class="o">(</span><span class="n">name</span> <span class="n">asText</span><span class="o">)</span> <span class="n">include</span><span class="err">?</span><span class="o">(</span><span class="n">name</span> <span class="n">asText</span><span class="o">),</span>
+      <span class="n">error</span><span class="o">!(</span><span class="s">&quot;Task `#{name}&#39; already defined&quot;</span><span class="o">))</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-27'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-27">#</a>
+        </div>
+        <p> Since everything has worked out so far, a new <code>Task</code> object is
+ created for the task. The <code>with</code> method is a nice Ioke feature, it
+ takes advantage of named arguments. <code>with</code> creates a new mimic of
+ the object it is called on, and each named argument is created as
+ an instance variable in the new mimic.
+ Ioke also shares <code>&lt;&lt;</code>, the list append operator, with Ruby.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="o">@</span><span class="n">tasks</span> <span class="o">&lt;&lt;</span> <span class="n">Task</span> <span class="n">with</span><span class="o">(</span><span class="n">name</span><span class="err">:</span> <span class="n">name</span><span class="o">,</span> <span class="n">dependencies</span><span class="err">:</span> <span class="n">deps</span><span class="o">,</span> <span class="n">body</span><span class="err">:</span> <span class="n">body</span><span class="o">,</span> <span class="n">desc</span><span class="err">:</span> <span class="n">desc</span><span class="o">)))</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-28'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-28">#</a>
+        </div>
+        <p> Biild only recognizes certain files as valid Biildfiles.
+ The <code>getFiles</code> method accepts a search path as a string, and returns a list
+ of valid Biildfiles in that directory with qualified path names.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="n">Biild</span> <span class="n">getFiles</span> <span class="o">=</span> <span class="k">method</span><span class="o">(</span><span class="n">search_path</span><span class="o">,</span>
+  <span class="o">[</span><span class="s">&quot;Biildfile&quot;</span><span class="o">,</span> <span class="s">&quot;biildfile&quot;</span><span class="o">,</span> <span class="s">&quot;Biildfile.ik&quot;</span><span class="o">,</span> <span class="s">&quot;biildfile.ik&quot;</span><span class="o">]</span> <span class="n">map</span><span class="o">(</span><span class="n">f</span><span class="o">,</span>
+    <span class="n">search_path</span> <span class="o">+</span> <span class="n">FileSystem</span> <span class="n">separator</span> <span class="o">+</span> <span class="n">f</span><span class="o">)</span> <span class="n">select</span><span class="o">(</span><span class="n">f</span><span class="o">,</span>
+      <span class="n">FileSystem</span> <span class="n">file</span><span class="err">?</span><span class="o">(</span><span class="n">f</span><span class="o">)))</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-29'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-29">#</a>
+        </div>
+        <h3>The Biildfile DSL</h3>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre></pre></div>
+      </td>
+    </tr>
+    <tr id='section-30'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-30">#</a>
+        </div>
+        <p> The DSL used in Biildfiles are implemented as <a href="http://ioke.org/wiki/index.php/Guide#Macros">destructuring macros</a>.
+ A dmacro is different from a regular macro in that is can destructure the
+ arguments it is given and respond to them accordingly.</p>
+
+<p> Accepted signatures in dmacros are defined by argument lists. If an argument
+ is prefixed with <code>&gt;</code> it means that it should be evaluated before being passed
+ to the macro body, otherwise the argument is unevaluated and is left as a
+ <code>Message</code> object.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="n">namespace</span> <span class="o">=</span> <span class="n">dmacro</span><span class="o">(</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-31'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-31">#</a>
+        </div>
+        <p> The <code>namespace</code> dmacro only accepts one signature, where it receives
+ <code>name</code> and <code>code</code> parameters.
+ The <code>name</code> parameter is evaluated because no manipulations need to be
+ performed on it, but the <code>code</code> parameter is left alone.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="o">[&gt;</span><span class="n">name</span><span class="o">,</span> <span class="n">code</span><span class="o">]</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-32'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-32">#</a>
+        </div>
+        <p> A new namespace nesting level is added.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="n">Biild</span> <span class="n">ns</span> <span class="o">&lt;&lt;</span> <span class="n">name</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-33'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-33">#</a>
+        </div>
+        <p> Then the code is evaluated in the context of whatever called the
+ <code>namespace</code> macro, which is probably the Biildfile.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="n">code</span> <span class="n">evaluateOn</span><span class="o">(</span><span class="n">call</span> <span class="n">ground</span><span class="o">)</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-34'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-34">#</a>
+        </div>
+        <p> Once <code>code</code> is evaluated, it means we have exited the namespace and
+ Biild goes up a level in the nesting.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>    <span class="n">Biild</span> <span class="n">ns</span> <span class="n">pop</span><span class="o">!)</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-35'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-35">#</a>
+        </div>
+        <p> The <code>task</code> macro delegated all the work to <code>Biild addTask</code>, but has three
+ different signatures to abstract it all away.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="n">task</span> <span class="o">=</span> <span class="n">dmacro</span><span class="o">(</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-36'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-36">#</a>
+        </div>
+        <p> If only a name is given, a new task is created with <code>true</code> as the body.
+ This allows tasks like this to be created:</p>
+
+<pre><code> task(:all =&gt; [:make, :docs, :package])
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="o">[&gt;</span><span class="n">name</span><span class="o">]</span> <span class="n">Biild</span> <span class="n">addTask</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="no">true</span><span class="o">),</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-37'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-37">#</a>
+        </div>
+        <p> The most common scenario is that both a name and body are given to a task.</p>
+
+<pre><code>task(:docs,
+  ; fork some process to generate html)
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="o">[&gt;</span><span class="n">name</span><span class="o">,</span> <span class="n">code</span><span class="o">]</span> <span class="n">Biild</span> <span class="n">addTask</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">code</span><span class="o">),</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-38'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-38">#</a>
+        </div>
+        <p> Tasks can also be given a description.
+ If a description is given, it must be the second argument, and the body
+ of the task is the third.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="o">[&gt;</span><span class="n">name</span><span class="o">,</span> <span class="o">&gt;</span><span class="n">description</span><span class="o">,</span> <span class="n">code</span><span class="o">]</span> <span class="n">Biild</span> <span class="n">addTask</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">code</span><span class="o">,</span> <span class="n">description</span><span class="o">))</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-39'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-39">#</a>
+        </div>
+        <h3>The Interface</h3>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre></pre></div>
+      </td>
+    </tr>
+    <tr id='section-40'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-40">#</a>
+        </div>
+        <p> The <code>System ifMain</code> evaluates the code passed to it if the currently
+ executing script is the one that was called by the interpreter.
+ It works the same as Python:</p>
+
+<pre><code> if __name__ == '__main__':
+     pass
+</code></pre>
+
+<p> Or Ruby:</p>
+
+<pre><code> if __FILE__ == $0
+   pass
+ end
+</code></pre>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre><span class="n">System</span> <span class="n">ifMain</span><span class="o">(</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-41'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-41">#</a>
+        </div>
+        <p> The first Biildfile that exists in the current working directory is
+ used as the Biildfile. If one doesn&rsquo;t exist, a condition is rained and
+ processing stops.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="n">biildfiles</span> <span class="o">=</span> <span class="n">Biild</span> <span class="n">getFiles</span><span class="o">(</span><span class="n">System</span> <span class="n">currentWorkingDirectory</span><span class="o">)</span>
+  <span class="n">case</span><span class="o">(</span><span class="n">biildfiles</span> <span class="n">empty</span><span class="err">?</span><span class="o">,</span>
+    <span class="no">false</span><span class="o">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">FileSystem</span> <span class="n">readFully</span><span class="o">(</span><span class="n">biildfiles</span> <span class="n">first</span><span class="o">),</span>
+    <span class="no">true</span><span class="o">,</span> <span class="n">error</span><span class="o">!(</span><span class="s">&quot;No biildfile found&quot;</span><span class="o">))</span>
+  <span class="n">Message</span> <span class="n">doText</span><span class="o">(</span><span class="n">source</span><span class="o">)</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-42'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-42">#</a>
+        </div>
+        <p> If no command-line parameters are passed, then it is assumed that the
+ task named <code>:default</code> is what is supposed to be invoked.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="n">tasks</span> <span class="o">=</span> <span class="k">if</span><span class="o">(</span><span class="n">System</span> <span class="n">programArguments</span> <span class="n">empty</span><span class="err">?</span><span class="o">,</span> <span class="o">[</span><span class="s">&quot;default&quot;</span><span class="o">],</span> <span class="n">System</span> <span class="n">programArguments</span><span class="o">)</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-43'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-43">#</a>
+        </div>
+        <p> Finally, one by one, each task given on the command line is invoked.</p>
+      </td>
+      <td class=code>
+        <div class='highlight'><pre>  <span class="n">tasks</span> <span class="n">each</span><span class="o">(</span><span class="n">taskName</span><span class="o">,</span>
+    <span class="n">atask</span> <span class="o">=</span> <span class="n">Biild</span> <span class="n">tasks</span> <span class="n">select</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">t</span> <span class="n">name</span> <span class="n">asText</span> <span class="o">==</span> <span class="n">taskName</span><span class="o">)</span> <span class="n">first</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">atask</span> <span class="no">nil</span><span class="err">?</span><span class="o">,</span> <span class="n">error</span><span class="o">!(</span><span class="s">&quot;No task `#{taskName}&#39;&quot;</span><span class="o">),</span> <span class="n">atask</span> <span class="n">invoke</span><span class="o">)</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">atask</span> <span class="n">success</span> <span class="n">not</span><span class="o">,</span> <span class="n">error</span><span class="o">!(</span><span class="s">&quot;Task `#{atask first name}&#39; failed&quot;</span><span class="o">))))</span></pre></div>
+      </td>
+    </tr>
+    <tr id='section-44'>
+      <td class=docs>
+        <div class="octowrap">
+          <a class="octothorpe" href="#section-44">#</a>
+        </div>
+        <h4>Notes</h4>
+
+<p> This annotation was generated by <a href="http://github.com/jdp/rocco">my fork</a> of <a href="http://github.com/rtomayko/rocco">Rocco</a>, the
+ quick-and-dirty literate programming annotation generator.</p>
+
+      </td>
+      <td class=code>
+        <div class='highlight'><pre></pre></div>
+      </td>
+    </tr>
+    </table>
+</div>
+</body>
