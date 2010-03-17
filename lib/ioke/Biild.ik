@@ -37,9 +37,9 @@ Biild do(
 			@tasks << Task with(name: name, dependencies: dependencies, body: body, desc: desc)))
 	;; Returns a list of valid Biild files in the search path
 	getFiles = method(search_path,
-		["Biildfile", "biildfile", "Biildfile.ik", "biildfile.ik"] select(f,
-			FileSystem file?(search_path + FileSystem separator + f)) map(f,
-				search_path + FileSystem separator + f)))
+		["Biildfile", "biildfile", "Biildfile.ik", "biildfile.ik"] map(f,
+			search_path + FileSystem separator + f) select(f,
+				FileSystem file?(f)))
 
 namespace = dmacro(
 	[>name, code]
